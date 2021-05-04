@@ -15,7 +15,7 @@ MONGO_DB = environ["MONGO_DB"]
 a = arrow.now('US/Central')
 minutes = int(a.format('mm'))
 hours = int(a.format('HH'))
-less_than_ten = minutes < 10
+less_than_ten = minutes > 58 and minutes < 8
 thirty_ish = minutes > 28 and minutes < 38
 after_nine = hours > 8
 before_three = hours < 3
@@ -107,7 +107,7 @@ if (less_than_ten or thirty_ish) and after_nine and before_three:
             'Request to slack returned an error %s, the response is:\n%s'
             % (response.status_code, response.text)
     )
-
+    time.sleep(1)
     slack_data = {'text': message_two}
     response = requests.post(
         webhook_url, data=json.dumps(slack_data),
@@ -121,7 +121,7 @@ if (less_than_ten or thirty_ish) and after_nine and before_three:
 
 else:
     print('not running')
-    print(hours + ":" + minutes)
+    print(str(hours) + ":" + str(minutes))
     quit()
 
 
