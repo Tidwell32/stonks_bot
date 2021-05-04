@@ -10,9 +10,9 @@ from os import environ
 from alpha_vantage.timeseries import TimeSeries
 import yfinance as yf
 
-webhook_url = environ['WEBHOOK_URL']
-alpha_vantage_key = environ['ALPHA_VANTAGE_KEY']
-MONGO_DB = environ["MONGO_DB"]
+webhook_url = "https://hooks.slack.com/services/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"
+alpha_vantage_key = "UCY7YTG98NZ4ZX36"
+MONGO_DB = "mongodb+srv://ZTidwell:Twinkie12!@cluster0.blwoc.mongodb.net/myFirstDatabase?retryWrites=true&w=majority"
 a = arrow.now('US/Central')
 minutes = int(a.format('mm'))
 hours = int(a.format('HH'))
@@ -23,7 +23,7 @@ thirty_ish = minutes > 28 and minutes < 38
 after_nine = hours > 8
 before_three = hours < 15
 
-if (less_than_ten or thirty_ish) and after_nine and before_three and weekday:
+if True:
     ts = TimeSeries(key=alpha_vantage_key, output_format='pandas')
     cluster = MongoClient(MONGO_DB)
     db = cluster["wsb_momentum"]
@@ -47,7 +47,7 @@ if (less_than_ten or thirty_ish) and after_nine and before_three and weekday:
     for item in todays_formatted_data:
         ticker = item['ticker']
         try:
-            difference.append({"ticker": ticker, "difference": (item['mentions'] * (24 - hours)) - yesterdays_formatted_data[ticker]})
+            difference.append({"ticker": ticker, "difference": (round(item['mentions'] * (24 / hours)), 0) - yesterdays_formatted_data[ticker]})
         except:
             continue
 
@@ -84,7 +84,7 @@ if (less_than_ten or thirty_ish) and after_nine and before_three and weekday:
     message = 'Top Twenty Tickers By Increase In Mentions Since Yesterday: \n'
     message_two = ''
     website = "\n <https://wsb-data.vercel.app/|Investigate these tickers further> \n"
-    for ticker in top_by_increase[0:19]:
+    for ticker in top_by_increase[0:9]:
         try:
             link = '<https://finance.yahoo.com/quote/' + ticker["ticker"] + '|*' + ticker["ticker"] + ":*> \n"
             mentions = "```On pace for " + str(ticker["difference"]) + " more mentions than yesterday. \n"
