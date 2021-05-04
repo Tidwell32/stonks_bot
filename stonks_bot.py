@@ -55,6 +55,7 @@ if (less_than_ten or thirty_ish) and after_nine and before_three and weekday:
     todays_formatted_data.sort(key=lambda x: x.get('mentions'), reverse=True)
     top_by_mentions = todays_formatted_data[0:9]
     top_by_increase = difference[0:19]
+    top_by_increase.sort(key=lambda x: x.get('mentions'))
 
     for ticker in top_by_increase:
         yahoo_data = yf.Ticker(ticker["ticker"])
