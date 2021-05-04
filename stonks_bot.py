@@ -120,6 +120,8 @@ if (less_than_ten or thirty_ish) and after_nine and before_three:
     )
 
 else:
+    print('not running')
+    print(hours + ":" + minutes)
     quit()
 
 
