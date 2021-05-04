@@ -7,12 +7,12 @@ import time
 import requests
 import json
 from os import environ
-from alpha_vantage.timeseries import TimeSeries
 import yfinance as yf
+from twelvedata import TDClient
 
 webhook_url = environ['WEBHOOK_URL']
-alpha_vantage_key = environ['ALPHA_VANTAGE_KEY']
 MONGO_DB = environ["MONGO_DB"]
+TWELVE_DATA_API_KEY = environ["TWELVE_DATA_API_KEY"]
 a = arrow.now('US/Central')
 minutes = int(a.format('mm'))
 hours = int(a.format('HH'))
@@ -24,7 +24,7 @@ after_nine = hours > 8
 before_three = hours < 15
 
 if (less_than_ten or thirty_ish) and after_nine and before_three and weekday:
-    ts = TimeSeries(key=alpha_vantage_key, output_format='pandas')
+    td = TDClient(apikey=TWELVE_DATA_API_KEY)
     cluster = MongoClient(MONGO_DB)
     db = cluster["wsb_momentum"]
     collection = db["daily_mentions"]
@@ -58,10 +58,22 @@ if (less_than_ten or thirty_ish) and after_nine and before_three and weekday:
     top_by_increase.sort(key=lambda x: x.get('difference'))
 
     for ticker in top_by_increase:
+        volume_last_thirty = 0
+        volume_previous_thirty = 0
         yahoo_data = yf.Ticker(ticker["ticker"])
         list_yahoo_data = yahoo_data.history(period="5d").values.tolist()
-        data, meta_data = ts.get_intraday(symbol=ticker['ticker'], interval='30min', outputsize='compact')
-        list_data = data.values.tolist()
+        data = td.time_series(
+            symbol=ticker["ticker"],
+            interval="1min",
+            outputsize=60,
+            timezone="America/New_York",
+        )
+        list_data = data.as_pandas().values.tolist()
+        for interval in list_data[0:29]:
+            volume_last_thirty += interval[4]
+        for interval in list_data[30:59]:
+            volume_previous_thirty += interval[4]
+
         ticker["open"] = str(round(list_yahoo_data[4][0], 2))
         ticker["change_since_open"] = str(round(list_data[0][3] - list_yahoo_data[4][0], 2))
         ticker["change_since_open_percentage"] = str(round((list_data[0][3] - list_yahoo_data[4][0]) / list_yahoo_data[4][0], 2))
@@ -69,15 +81,15 @@ if (less_than_ten or thirty_ish) and after_nine and before_three and weekday:
         ticker["yesterday_high"] =str(round(list_yahoo_data[3][1], 2))
         ticker["yesterday_low"] = str(round(list_yahoo_data[3][2], 2))
         ticker["yesterday_close"] = str(round(list_yahoo_data[3][3], 2))
-        ticker["volume"] = str(int(round(list_data[0][4], 0)))
-        ticker["volume_change"] = str(int(round(list_data[0][4] - list_data[1][4], 0)))
-        ticker["volume_change_percentage"] = str(round(((list_data[0][4] - list_data[1][4]) / list_data[1][4]) * 100, 2))
-        ticker["thirty_min_change"] = str(round(list_data[0][3] - list_data[0][0], 2))
-        ticker["one_hour_change"] = str(round(list_data[0][3] - list_data[1][0], 2))
-        ticker["thirty_min_change_percentage"] = str(round(((list_data[0][3] - list_data[0][0]) / list_data[0][0]) * 100, 2))
-        ticker["one_hour_change_percentage"] = str(round(((list_data[0][3] - list_data[1][0]) / list_data[1][0]) * 100, 2))
+        ticker["volume"] = str(int(volume_last_thirty))
+        ticker["volume_change"] = str(int(volume_last_thirty - volume_previous_thirty))
+        ticker["volume_change_percentage"] = str(round(((volume_last_thirty - volume_previous_thirty) / volume_previous_thirty) * 100, 2))
+        ticker["thirty_min_change"] = str(round(list_data[0][3] - list_data[29][0], 2))
+        ticker["one_hour_change"] = str(round(list_data[0][3] - list_data[59][0], 2))
+        ticker["thirty_min_change_percentage"] = str(round(((list_data[0][3] - list_data[29][0]) / list_data[29][0]) * 100, 2))
+        ticker["one_hour_change_percentage"] = str(round(((list_data[0][3] - list_data[59][0]) / list_data[59][0]) * 100, 2))
         ticker["price"] = str(round(list_data[0][3], 2))
-        time.sleep(13)
+        time.sleep(8)
         
 
     message = 'Top Twenty Tickers By Increase In Mentions Since Yesterday: \n'
