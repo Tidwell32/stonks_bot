@@ -10,9 +10,9 @@ from os import environ
 from alpha_vantage.timeseries import TimeSeries
 import yfinance as yf
 
-webhook_url = "https://hooks.slack.com/services/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"
-alpha_vantage_key = "UCY7YTG98NZ4ZX36"
-MONGO_DB = "mongodb+srv://ZTidwell:Twinkie12!@cluster0.blwoc.mongodb.net/myFirstDatabase?retryWrites=true&w=majority"
+webhook_url = environ['WEBHOOK_URL']
+alpha_vantage_key = environ['ALPHA_VANTAGE_KEY']
+MONGO_DB = environ["MONGO_DB"]
 a = arrow.now('US/Central')
 minutes = int(a.format('mm'))
 hours = int(a.format('HH'))
@@ -23,7 +23,7 @@ thirty_ish = minutes > 28 and minutes < 38
 after_nine = hours > 8
 before_three = hours < 15
 
-if True:
+if (less_than_ten or thirty_ish) and after_nine and before_three and weekday:
     ts = TimeSeries(key=alpha_vantage_key, output_format='pandas')
     cluster = MongoClient(MONGO_DB)
     db = cluster["wsb_momentum"]
@@ -47,7 +47,7 @@ if True:
     for item in todays_formatted_data:
         ticker = item['ticker']
         try:
-            difference.append({"ticker": ticker, "difference": (round(item['mentions'] * (24 / hours)), 0) - yesterdays_formatted_data[ticker]})
+            difference.append({"ticker": ticker, "difference": round(item['mentions'] * (24 / hours), 0) - yesterdays_formatted_data[ticker]})
         except:
             continue
 
@@ -57,29 +57,27 @@ if True:
     top_by_increase = difference[0:19]
 
     for ticker in top_by_increase:
-        try:
-            yahoo_data = yf.Ticker(ticker["ticker"])
-            list_yahoo_data = yahoo_data.history(period="5d").values.tolist()
-            data, meta_data = ts.get_intraday(symbol=ticker['ticker'], interval='30min', outputsize='compact')
-            list_data = data.values.tolist()
-            ticker["open"] = str(round(list_yahoo_data[4][0], 2))
-            ticker["change_since_open"] = str(round(list_data[0][3] - list_yahoo_data[4][0], 2))
-            ticker["change_since_open_percentage"] = str(round((list_data[0][3] - list_yahoo_data[4][0]) / list_yahoo_data[4][0], 2))
-            ticker["yesterday_open"] = str(round(list_yahoo_data[3][0], 2))
-            ticker["yesterday_high"] =str(round(list_yahoo_data[3][1], 2))
-            ticker["yesterday_low"] = str(round(list_yahoo_data[3][2], 2))
-            ticker["yesterday_close"] = str(round(list_yahoo_data[3][3], 2))
-            ticker["volume"] = str(int(round(list_data[0][4], 0)))
-            ticker["volume_change"] = str(int(round(list_data[0][4] - list_data[1][4], 0)))
-            ticker["volume_change_percentage"] = str(round(((list_data[0][4] - list_data[1][4]) / list_data[1][4]) * 100, 2))
-            ticker["thirty_min_change"] = str(round(list_data[0][3] - list_data[0][0], 2))
-            ticker["one_hour_change"] = str(round(list_data[0][3] - list_data[1][0], 2))
-            ticker["thirty_min_change_percentage"] = str(round(((list_data[0][3] - list_data[0][0]) / list_data[0][0]) * 100, 2))
-            ticker["one_hour_change_percentage"] = str(round(((list_data[0][3] - list_data[1][0]) / list_data[1][0]) * 100, 2))
-            ticker["price"] = str(round(list_data[0][3], 2))
-            time.sleep(13)
-        except: 
-            continue
+        yahoo_data = yf.Ticker(ticker["ticker"])
+        list_yahoo_data = yahoo_data.history(period="5d").values.tolist()
+        data, meta_data = ts.get_intraday(symbol=ticker['ticker'], interval='30min', outputsize='compact')
+        list_data = data.values.tolist()
+        ticker["open"] = str(round(list_yahoo_data[4][0], 2))
+        ticker["change_since_open"] = str(round(list_data[0][3] - list_yahoo_data[4][0], 2))
+        ticker["change_since_open_percentage"] = str(round((list_data[0][3] - list_yahoo_data[4][0]) / list_yahoo_data[4][0], 2))
+        ticker["yesterday_open"] = str(round(list_yahoo_data[3][0], 2))
+        ticker["yesterday_high"] =str(round(list_yahoo_data[3][1], 2))
+        ticker["yesterday_low"] = str(round(list_yahoo_data[3][2], 2))
+        ticker["yesterday_close"] = str(round(list_yahoo_data[3][3], 2))
+        ticker["volume"] = str(int(round(list_data[0][4], 0)))
+        ticker["volume_change"] = str(int(round(list_data[0][4] - list_data[1][4], 0)))
+        ticker["volume_change_percentage"] = str(round(((list_data[0][4] - list_data[1][4]) / list_data[1][4]) * 100, 2))
+        ticker["thirty_min_change"] = str(round(list_data[0][3] - list_data[0][0], 2))
+        ticker["one_hour_change"] = str(round(list_data[0][3] - list_data[1][0], 2))
+        ticker["thirty_min_change_percentage"] = str(round(((list_data[0][3] - list_data[0][0]) / list_data[0][0]) * 100, 2))
+        ticker["one_hour_change_percentage"] = str(round(((list_data[0][3] - list_data[1][0]) / list_data[1][0]) * 100, 2))
+        ticker["price"] = str(round(list_data[0][3], 2))
+        time.sleep(13)
+        
 
     message = 'Top Twenty Tickers By Increase In Mentions Since Yesterday: \n'
     message_two = ''
@@ -87,7 +85,7 @@ if True:
     for ticker in top_by_increase[0:9]:
         try:
             link = '<https://finance.yahoo.com/quote/' + ticker["ticker"] + '|*' + ticker["ticker"] + ":*> \n"
-            mentions = "```On pace for " + str(ticker["difference"]) + " more mentions than yesterday. \n"
+            mentions = "```On pace for " + str(int(ticker["difference"])) + " more mentions than yesterday. \n"
             price = "Currently $" + ticker["price"] + "\n"
             opened = "Opened at $" + ticker["open"] + "\n"
             open_change = "Change of $" + ticker["change_since_open"] + " (" + ticker["change_since_open_percentage"] + "%) since open. \n"
@@ -103,7 +101,7 @@ if True:
     for ticker in top_by_increase[10:19]:
         try:
             link = '<https://finance.yahoo.com/quote/' + ticker["ticker"] + '|*' + ticker["ticker"] + ":*> \n"
-            mentions = "```On pace for " + str(ticker["difference"]) + " more mentions than yesterday. \n"
+            mentions = "```On pace for " + str(int(ticker["difference"])) + " more mentions than yesterday. \n"
             price = "Currently $" + ticker["price"] + "\n"
             opened = "Opened at $" + ticker["open"] + "\n"
             open_change = "Change of $" + ticker["change_since_open"] + " (" + ticker["change_since_open_percentage"] + "%) since open. \n"
