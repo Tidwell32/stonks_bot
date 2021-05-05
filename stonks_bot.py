@@ -73,7 +73,7 @@ def run(hours):
     difference.sort(key=lambda x: x.get('difference'), reverse=True)
     todays_formatted_data.sort(key=lambda x: x.get('mentions'), reverse=True)
     top_by_mentions = todays_formatted_data[0:9]
-    top_by_increase = difference[0:4]
+    top_by_increase = difference[0:19]
     top_by_increase.sort(key=lambda x: x.get('difference_percentage'))
 
     for ticker in top_by_increase:
