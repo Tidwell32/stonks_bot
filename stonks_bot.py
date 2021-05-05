@@ -134,15 +134,20 @@ def run(hours):
             pass
         time.sleep(8)
 
-    message = 'Top Twenty Tickers By Increase In Mentions Since Yesterday: \n'
+    message = '*Top Twenty Tickers By Increase In Mentions Since Yesterday:* \n'
     message_two = ''
     message_three = ''
     website = "\n <https://wsb-data.vercel.app/|Investigate these tickers further> \n"
     alert = False
     alert_message = '@channel *High acceleration detected* \n'
     for ticker in top_by_increase[0:6]:
+        small_increase_high_mentions = float(ticker["difference_percentage"]) > 100 and int(ticker["mentions"]) > 100
+        big_increase_moderate_mentions = float(ticker["difference_percentage"]) > 500 and int(ticker["mentions"]) > 50
+        huge_increase_low_mentions = float(ticker["difference_percentage"]) > 2000
+        price_increase = float(ticker["thirty_min_change_percentage"]) > 5 or float(ticker["one_hour_change_percentage"]) > 10
+
         link = '<https://finance.yahoo.com/quote/' + ticker["ticker"] + '|*' + ticker["ticker"] + ":*> \n"
-        if float(ticker["difference_percentage"]) > 100 and (float(ticker["thirty_min_change_percentage"]) > 5 or float(ticker["one_hour_change_percentage"]) > 10):
+        if (small_increase_high_mentions or big_increase_moderate_mentions or huge_increase_low_mentions) and price_increase:
             alert = True
             try:
                 mentions = "```On pace for " + str(int(ticker["difference"])) + " (" + str(ticker["difference_percentage"]) + "%) more mentions than yesterday. \n"
@@ -174,8 +179,13 @@ def run(hours):
 
 
     for ticker in top_by_increase[6:14]:
+        small_increase_high_mentions = float(ticker["difference_percentage"]) > 100 and int(ticker["mentions"]) > 100
+        big_increase_moderate_mentions = float(ticker["difference_percentage"]) > 500 and int(ticker["mentions"]) > 50
+        huge_increase_low_mentions = float(ticker["difference_percentage"]) > 2000
+        price_increase = float(ticker["thirty_min_change_percentage"]) > 5 or float(ticker["one_hour_change_percentage"]) > 10
+
         link = '<https://finance.yahoo.com/quote/' + ticker["ticker"] + '|*' + ticker["ticker"] + ":*> \n"
-        if float(ticker["difference_percentage"]) > 100 and (float(ticker["thirty_min_change_percentage"]) > 5 or float(ticker["one_hour_change_percentage"]) > 10):
+        if (small_increase_high_mentions or big_increase_moderate_mentions or huge_increase_low_mentions) and price_increase:
             alert = True
             try:
                 mentions = "```On pace for " + str(int(ticker["difference"])) + " (" + str(ticker["difference_percentage"]) + "%) more mentions than yesterday. \n"
@@ -206,8 +216,13 @@ def run(hours):
                 message_two += "Error fetching for " + link
 
     for ticker in top_by_increase[14:]:
+        small_increase_high_mentions = float(ticker["difference_percentage"]) > 100 and int(ticker["mentions"]) > 100
+        big_increase_moderate_mentions = float(ticker["difference_percentage"]) > 500 and int(ticker["mentions"]) > 50
+        huge_increase_low_mentions = float(ticker["difference_percentage"]) > 2000
+        price_increase = float(ticker["thirty_min_change_percentage"]) > 5 or float(ticker["one_hour_change_percentage"]) > 10
+
         link = '<https://finance.yahoo.com/quote/' + ticker["ticker"] + '|*' + ticker["ticker"] + ":*> \n"
-        if float(ticker["difference_percentage"]) > 100 and (float(ticker["thirty_min_change_percentage"]) > 5 or float(ticker["one_hour_change_percentage"]) > 10):
+        if (small_increase_high_mentions or big_increase_moderate_mentions or huge_increase_low_mentions) and price_increase:
             alert = True
             try:
                 mentions = "```On pace for " + str(int(ticker["difference"])) + " (" + str(ticker["difference_percentage"]) + "%) more mentions than yesterday. \n"
@@ -271,7 +286,7 @@ def run(hours):
     )
     if alert:
         time.sleep(1)
-        slack_data = {'text': alert_message}
+        slack_data = {'text': alert_message, "link_names": True}
         response = requests.post(
             webhook_url, data=json.dumps(slack_data),
             headers={'Content-Type': 'application/json'}
