@@ -13,12 +13,8 @@ from twelvedata import TDClient
 webhook_url = environ['WEBHOOK_URL']
 MONGO_DB = environ["MONGO_DB"]
 TWELVE_DATA_API_KEY = environ["TWELVE_DATA_API_KEY"]
-a = arrow.now('US/Central')
-hours = int(a.format('HH'))
-day = int(a.format('d'))
-weekday = day > 1 and day < 7
 
-def run():
+def run(hours):
     start = time.process_time()
     td = TDClient(apikey=TWELVE_DATA_API_KEY)
     cluster = MongoClient(MONGO_DB)
@@ -219,12 +215,15 @@ def run():
                 % (response.status_code, response.text)
         )
 
+a = arrow.now('US/Central')
+hours = int(a.format('HH'))
+day = int(a.format('d'))
+weekday = day > 1 and day < 7
 while(hours < 15 and weekday):
     a = arrow.now('US/Central')
-    minutes = int(a.format('mm'))
     hours = int(a.format('HH'))
     start = round(time.time(), 0)
-    run()
+    run(hours)
     duration = round(time.time(), 0) - start
     start = round(time.time(), 0)
     time.sleep(1785 - duration)
