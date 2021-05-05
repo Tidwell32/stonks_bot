@@ -14,16 +14,12 @@ webhook_url = environ['WEBHOOK_URL']
 MONGO_DB = environ["MONGO_DB"]
 TWELVE_DATA_API_KEY = environ["TWELVE_DATA_API_KEY"]
 a = arrow.now('US/Central')
-minutes = int(a.format('mm'))
 hours = int(a.format('HH'))
 day = int(a.format('d'))
 weekday = day > 1 and day < 7
-less_than_ten = minutes > 58 or minutes < 8
-thirty_ish = minutes > 28 and minutes < 38
-after_nine = hours > 8
-before_three = hours < 15
 
-if (less_than_ten or thirty_ish) and after_nine and before_three and weekday:
+def run():
+    start = time.process_time()
     td = TDClient(apikey=TWELVE_DATA_API_KEY)
     cluster = MongoClient(MONGO_DB)
     db = cluster["wsb_momentum"]
@@ -37,6 +33,33 @@ if (less_than_ten or thirty_ish) and after_nine and before_three and weekday:
     todays_formatted_data = []
     yesterdays_formatted_data = {}
     difference = []
+    coef_list = [
+        51.6,
+        27.2,
+        21.1,
+        16.8,
+        14.7,
+        9.4,
+        7.9,
+        6.3,
+        4.6,
+        3.6,
+        3,
+        2.6,
+        2.2,
+        2,
+        1.6,
+        1.5,
+        1.4,
+        1.35,
+        1.3,
+        1.25,
+        1.2,
+        1.15,
+        1.1,
+        1,
+        1
+    ]
 
     for ticker in todays_tickers:
         todays_formatted_data.append({'ticker': ticker['ticker'], 'mentions': ticker['mentions'][0]})
@@ -47,15 +70,15 @@ if (less_than_ten or thirty_ish) and after_nine and before_three and weekday:
     for item in todays_formatted_data:
         ticker = item['ticker']
         try:
-            difference.append({"ticker": ticker, "difference": round(item['mentions'] * (24 / hours), 0) - yesterdays_formatted_data[ticker]})
+            difference.append({"ticker": ticker, "difference": round(item['mentions'] * coef_list[hours], 0) - yesterdays_formatted_data[ticker], "difference_percentage": round((((item['mentions'] * coef_list[hours]) - yesterdays_formatted_data[ticker]) / yesterdays_formatted_data[ticker]) * 100, 2)})
         except:
-            continue
+            print('skipping ' + ticker)
 
     difference.sort(key=lambda x: x.get('difference'), reverse=True)
     todays_formatted_data.sort(key=lambda x: x.get('mentions'), reverse=True)
     top_by_mentions = todays_formatted_data[0:9]
-    top_by_increase = difference[0:19]
-    top_by_increase.sort(key=lambda x: x.get('difference'))
+    top_by_increase = difference[0:4]
+    top_by_increase.sort(key=lambda x: x.get('difference_percentage'))
 
     for ticker in top_by_increase:
         volume_last_thirty = 0
@@ -76,7 +99,7 @@ if (less_than_ten or thirty_ish) and after_nine and before_three and weekday:
 
         ticker["open"] = str(round(list_yahoo_data[4][0], 2))
         ticker["change_since_open"] = str(round(list_data[0][3] - list_yahoo_data[4][0], 2))
-        ticker["change_since_open_percentage"] = str(round((list_data[0][3] - list_yahoo_data[4][0]) / list_yahoo_data[4][0], 2))
+        ticker["change_since_open_percentage"] = str(round((list_data[0][3] - list_yahoo_data[4][0]) / list_yahoo_data[4][0] * 100, 2))
         ticker["yesterday_open"] = str(round(list_yahoo_data[3][0], 2))
         ticker["yesterday_high"] =str(round(list_yahoo_data[3][1], 2))
         ticker["yesterday_low"] = str(round(list_yahoo_data[3][2], 2))
@@ -91,41 +114,75 @@ if (less_than_ten or thirty_ish) and after_nine and before_three and weekday:
         ticker["price"] = str(round(list_data[0][3], 2))
         time.sleep(8)
         
-
     message = 'Top Twenty Tickers By Increase In Mentions Since Yesterday: \n'
     message_two = ''
     website = "\n <https://wsb-data.vercel.app/|Investigate these tickers further> \n"
+    alert = False
+    alert_message = '@channel *High acceleration detected* \n'
     for ticker in top_by_increase[0:9]:
-        try:
-            link = '<https://finance.yahoo.com/quote/' + ticker["ticker"] + '|*' + ticker["ticker"] + ":*> \n"
-            mentions = "```On pace for " + str(int(ticker["difference"])) + " more mentions than yesterday. \n"
-            price = "Currently $" + ticker["price"] + "\n"
-            opened = "Opened at $" + ticker["open"] + "\n"
-            open_change = "Change of $" + ticker["change_since_open"] + " (" + ticker["change_since_open_percentage"] + "%) since open. \n"
-            price_thirty = "Change of $" + ticker["thirty_min_change"] + " (" + ticker["thirty_min_change_percentage"] + "%) over thirty minutes. \n"
-            price_sixty = "Change of $" + ticker["one_hour_change"] + " (" + ticker["one_hour_change_percentage"] + "%) over one hour. \n"   
-            volume = ticker["volume"] + " volume traded in the past thirty minutes. \n"
-            volume_change =  "Change of " + ticker["volume_change"] + " (" + ticker["volume_change_percentage"] + "%) from the previous thirty minutes. \n" 
-            yesterday = "Yesterday: Open: $" + ticker["yesterday_open"] + ". High: $" + ticker["yesterday_high"] + ". Low: $" + ticker["yesterday_low"] + ". Close: $" + ticker["yesterday_close"] + ". ``` \n"
-            message += link + mentions + price + opened + open_change + price_thirty + price_sixty + volume + volume_change + yesterday
-        except:
-            message += "Error fetching info for " + ticker["ticker"] + ". \n"
+        link = '<https://finance.yahoo.com/quote/' + ticker["ticker"] + '|*' + ticker["ticker"] + ":*> \n"
+        if float(ticker["difference_percentage"]) > 100 and (float(ticker["thirty_min_change_percentage"]) > 5 or float(ticker["one_hour_change_percentage"]) > 10):
+            alert = True
+            try:
+                mentions = "```On pace for " + str(int(ticker["difference"])) + " (" + str(ticker["difference_percentage"]) + "%) more mentions than yesterday. \n"
+                price = "Currently $" + ticker["price"] + "\n"
+                opened = "Opened at $" + ticker["open"] + "\n"
+                open_change = "Change of $" + ticker["change_since_open"] + " (" + ticker["change_since_open_percentage"] + "%) since open. \n"
+                price_thirty = "Change of $" + ticker["thirty_min_change"] + " (" + ticker["thirty_min_change_percentage"] + "%) over thirty minutes. \n"
+                price_sixty = "Change of $" + ticker["one_hour_change"] + " (" + ticker["one_hour_change_percentage"] + "%) over one hour. \n"   
+                volume = ticker["volume"] + " volume traded in the past thirty minutes. \n"
+                volume_change =  "Change of " + ticker["volume_change"] + " (" + ticker["volume_change_percentage"] + "%) from the previous thirty minutes. \n" 
+                yesterday = "Yesterday: Open: $" + ticker["yesterday_open"] + ". High: $" + ticker["yesterday_high"] + ". Low: $" + ticker["yesterday_low"] + ". Close: $" + ticker["yesterday_close"] + ". ``` \n"
+                alert_message += link + mentions + price + opened + open_change + price_thirty + price_sixty + volume + volume_change + yesterday
+            except:
+                message_two += "Error fetching data for " + link
+        else:
+            try:
+                mentions = "```On pace for " + str(int(ticker["difference"])) + " (" + str(ticker["difference_percentage"]) + "%) more mentions than yesterday. \n"
+                price = "Currently $" + ticker["price"] + "\n"
+                opened = "Opened at $" + ticker["open"] + "\n"
+                open_change = "Change of $" + ticker["change_since_open"] + " (" + ticker["change_since_open_percentage"] + "%) since open. \n"
+                price_thirty = "Change of $" + ticker["thirty_min_change"] + " (" + ticker["thirty_min_change_percentage"] + "%) over thirty minutes. \n"
+                price_sixty = "Change of $" + ticker["one_hour_change"] + " (" + ticker["one_hour_change_percentage"] + "%) over one hour. \n"   
+                volume = ticker["volume"] + " volume traded in the past thirty minutes. \n"
+                volume_change =  "Change of " + ticker["volume_change"] + " (" + ticker["volume_change_percentage"] + "%) from the previous thirty minutes. \n" 
+                yesterday = "Yesterday: Open: $" + ticker["yesterday_open"] + ". High: $" + ticker["yesterday_high"] + ". Low: $" + ticker["yesterday_low"] + ". Close: $" + ticker["yesterday_close"] + ". ``` \n"
+                message += link + mentions + price + opened + open_change + price_thirty + price_sixty + volume + volume_change + yesterday
+            except:
+                message += "Error fetching for " + '<https://finance.yahoo.com/quote/' + ticker["ticker"] + '|' + ticker["ticker"] + ":> \n"
+
 
     for ticker in top_by_increase[10:19]:
-        try:
-            link = '<https://finance.yahoo.com/quote/' + ticker["ticker"] + '|*' + ticker["ticker"] + ":*> \n"
-            mentions = "```On pace for " + str(int(ticker["difference"])) + " more mentions than yesterday. \n"
-            price = "Currently $" + ticker["price"] + "\n"
-            opened = "Opened at $" + ticker["open"] + "\n"
-            open_change = "Change of $" + ticker["change_since_open"] + " (" + ticker["change_since_open_percentage"] + "%) since open. \n"
-            price_thirty = "Change of $" + ticker["thirty_min_change"] + " (" + ticker["thirty_min_change_percentage"] + "%) over thirty minutes. \n"
-            price_sixty = "Change of $" + ticker["one_hour_change"] + " (" + ticker["one_hour_change_percentage"] + "%) over one hour. \n"   
-            volume = ticker["volume"] + " volume traded in the past thirty minutes. \n"
-            volume_change =  "Change of " + ticker["volume_change"] + " (" + ticker["volume_change_percentage"] + "%) from the previous thirty minutes. \n" 
-            yesterday = "Yesterday: Open: $" + ticker["yesterday_open"] + ". High: $" + ticker["yesterday_high"] + ". Low: $" + ticker["yesterday_low"] + ". Close: $" + ticker["yesterday_close"] + ". ``` \n"
-            message_two += link + mentions + price + opened + open_change + price_thirty + price_sixty + volume + volume_change + yesterday
-        except:
-            message_two += "Error fetching for " + ticker["ticker"] + ". \n"
+        link = '<https://finance.yahoo.com/quote/' + ticker["ticker"] + '|*' + ticker["ticker"] + ":*> \n"
+        if float(ticker["difference_percentage"]) > 100 and (float(ticker["thirty_min_change_percentage"]) > 5 or float(ticker["one_hour_change_percentage"]) > 10):
+            alert = True
+            try:
+                mentions = "```On pace for " + str(int(ticker["difference"])) + " (" + str(ticker["difference_percentage"]) + "%) more mentions than yesterday. \n"
+                price = "Currently $" + ticker["price"] + "\n"
+                opened = "Opened at $" + ticker["open"] + "\n"
+                open_change = "Change of $" + ticker["change_since_open"] + " (" + ticker["change_since_open_percentage"] + "%) since open. \n"
+                price_thirty = "Change of $" + ticker["thirty_min_change"] + " (" + ticker["thirty_min_change_percentage"] + "%) over thirty minutes. \n"
+                price_sixty = "Change of $" + ticker["one_hour_change"] + " (" + ticker["one_hour_change_percentage"] + "%) over one hour. \n"   
+                volume = ticker["volume"] + " volume traded in the past thirty minutes. \n"
+                volume_change =  "Change of " + ticker["volume_change"] + " (" + ticker["volume_change_percentage"] + "%) from the previous thirty minutes. \n" 
+                yesterday = "Yesterday: Open: $" + ticker["yesterday_open"] + ". High: $" + ticker["yesterday_high"] + ". Low: $" + ticker["yesterday_low"] + ". Close: $" + ticker["yesterday_close"] + ". ``` \n"
+                alert_message += link + mentions + price + opened + open_change + price_thirty + price_sixty + volume + volume_change + yesterday
+            except:
+                message_two += "Error fetching data for " + link
+        else:
+            try:
+                mentions = "```On pace for " + str(int(ticker["difference"])) + " (" + str(ticker["difference_percentage"]) + "%) more mentions than yesterday. \n"
+                price = "Currently $" + ticker["price"] + "\n"
+                opened = "Opened at $" + ticker["open"] + "\n"
+                open_change = "Change of $" + ticker["change_since_open"] + " (" + ticker["change_since_open_percentage"] + "%) since open. \n"
+                price_thirty = "Change of $" + ticker["thirty_min_change"] + " (" + ticker["thirty_min_change_percentage"] + "%) over thirty minutes. \n"
+                price_sixty = "Change of $" + ticker["one_hour_change"] + " (" + ticker["one_hour_change_percentage"] + "%) over one hour. \n"   
+                volume = ticker["volume"] + " volume traded in the past thirty minutes. \n"
+                volume_change =  "Change of " + ticker["volume_change"] + " (" + ticker["volume_change_percentage"] + "%) from the previous thirty minutes. \n" 
+                yesterday = "Yesterday: Open: $" + ticker["yesterday_open"] + ". High: $" + ticker["yesterday_high"] + ". Low: $" + ticker["yesterday_low"] + ". Close: $" + ticker["yesterday_close"] + ". ``` \n"
+                message_two += link + mentions + price + opened + open_change + price_thirty + price_sixty + volume + volume_change + yesterday
+            except:
+                message_two += "Error fetching for " + link
 
     slack_data = {'text': message}
     response = requests.post(
@@ -149,10 +206,27 @@ if (less_than_ten or thirty_ish) and after_nine and before_three and weekday:
             % (response.status_code, response.text)
     )
 
-else:
-    print('not running')
-    print(str(hours) + ":" + str(minutes))
-    quit()
+    if alert:
+        time.sleep(1)
+        slack_data = {'text': alert_message}
+        response = requests.post(
+            webhook_url, data=json.dumps(slack_data),
+            headers={'Content-Type': 'application/json'}
+        )
+        if response.status_code != 200:
+            raise ValueError(
+                'Request to slack returned an error %s, the response is:\n%s'
+                % (response.status_code, response.text)
+        )
 
+while(hours < 15 and weekday):
+    a = arrow.now('US/Central')
+    minutes = int(a.format('mm'))
+    hours = int(a.format('HH'))
+    start = round(time.time(), 0)
+    run()
+    duration = round(time.time(), 0) - start
+    start = round(time.time(), 0)
+    time.sleep(1785 - duration)
 
-
+quit()
