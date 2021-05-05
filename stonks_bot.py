@@ -88,6 +88,7 @@ def run(hours):
             ticker["yesterday_low"] = str(round(list_yahoo_data[3][2], 2))
             ticker["yesterday_close"] = str(round(list_yahoo_data[3][3], 2))
         except:
+            print('excepted?')
             try:
                 twelve_data = td.time_series(
                     symbol=ticker["ticker"],
@@ -136,10 +137,11 @@ def run(hours):
 
     message = 'Top Twenty Tickers By Increase In Mentions Since Yesterday: \n'
     message_two = ''
+    message_three = ''
     website = "\n <https://wsb-data.vercel.app/|Investigate these tickers further> \n"
     alert = False
     alert_message = '@channel *High acceleration detected* \n'
-    for ticker in top_by_increase[0:9]:
+    for ticker in top_by_increase[0:6]:
         link = '<https://finance.yahoo.com/quote/' + ticker["ticker"] + '|*' + ticker["ticker"] + ":*> \n"
         if float(ticker["difference_percentage"]) > 100 and (float(ticker["thirty_min_change_percentage"]) > 5 or float(ticker["one_hour_change_percentage"]) > 10):
             alert = True
@@ -172,7 +174,7 @@ def run(hours):
                 message += "Error fetching for " + '<https://finance.yahoo.com/quote/' + ticker["ticker"] + '|' + ticker["ticker"] + ":> \n"
 
 
-    for ticker in top_by_increase[10:19]:
+    for ticker in top_by_increase[6:14]:
         link = '<https://finance.yahoo.com/quote/' + ticker["ticker"] + '|*' + ticker["ticker"] + ":*> \n"
         if float(ticker["difference_percentage"]) > 100 and (float(ticker["thirty_min_change_percentage"]) > 5 or float(ticker["one_hour_change_percentage"]) > 10):
             alert = True
@@ -204,6 +206,38 @@ def run(hours):
             except:
                 message_two += "Error fetching for " + link
 
+    for ticker in top_by_increase[14:]:
+        link = '<https://finance.yahoo.com/quote/' + ticker["ticker"] + '|*' + ticker["ticker"] + ":*> \n"
+        if float(ticker["difference_percentage"]) > 100 and (float(ticker["thirty_min_change_percentage"]) > 5 or float(ticker["one_hour_change_percentage"]) > 10):
+            alert = True
+            try:
+                mentions = "```On pace for " + str(int(ticker["difference"])) + " (" + str(ticker["difference_percentage"]) + "%) more mentions than yesterday. \n"
+                price = "Currently $" + ticker["price"] + "\n"
+                opened = "Opened at $" + ticker["open"] + "\n"
+                open_change = "Change of $" + ticker["change_since_open"] + " (" + ticker["change_since_open_percentage"] + "%) since open. \n"
+                price_thirty = "Change of $" + ticker["thirty_min_change"] + " (" + ticker["thirty_min_change_percentage"] + "%) over thirty minutes. \n"
+                price_sixty = "Change of $" + ticker["one_hour_change"] + " (" + ticker["one_hour_change_percentage"] + "%) over one hour. \n"   
+                volume = ticker["volume"] + " volume traded in the past thirty minutes. \n"
+                volume_change =  "Change of " + ticker["volume_change"] + " (" + ticker["volume_change_percentage"] + "%) from the previous thirty minutes. \n" 
+                yesterday = "Yesterday: Open: $" + ticker["yesterday_open"] + ". High: $" + ticker["yesterday_high"] + ". Low: $" + ticker["yesterday_low"] + ". Close: $" + ticker["yesterday_close"] + ". ``` \n"
+                alert_message += link + mentions + price + opened + open_change + price_thirty + price_sixty + volume + volume_change + yesterday
+            except:
+                alert_message += "Error fetching data for high acceleration ticker: " + link
+        else:
+            try:
+                mentions = "```On pace for " + str(int(ticker["difference"])) + " (" + str(ticker["difference_percentage"]) + "%) more mentions than yesterday. \n"
+                price = "Currently $" + ticker["price"] + "\n"
+                opened = "Opened at $" + ticker["open"] + "\n"
+                open_change = "Change of $" + ticker["change_since_open"] + " (" + ticker["change_since_open_percentage"] + "%) since open. \n"
+                price_thirty = "Change of $" + ticker["thirty_min_change"] + " (" + ticker["thirty_min_change_percentage"] + "%) over thirty minutes. \n"
+                price_sixty = "Change of $" + ticker["one_hour_change"] + " (" + ticker["one_hour_change_percentage"] + "%) over one hour. \n"   
+                volume = ticker["volume"] + " volume traded in the past thirty minutes. \n"
+                volume_change =  "Change of " + ticker["volume_change"] + " (" + ticker["volume_change_percentage"] + "%) from the previous thirty minutes. \n" 
+                yesterday = "Yesterday: Open: $" + ticker["yesterday_open"] + ". High: $" + ticker["yesterday_high"] + ". Low: $" + ticker["yesterday_low"] + ". Close: $" + ticker["yesterday_close"] + ". ``` \n"
+                message_three += link + mentions + price + opened + open_change + price_thirty + price_sixty + volume + volume_change + yesterday
+            except:
+                message_three += "Error fetching for " + link
+
     slack_data = {'text': message}
     response = requests.post(
         webhook_url, data=json.dumps(slack_data),
@@ -215,7 +249,7 @@ def run(hours):
             % (response.status_code, response.text)
     )
     time.sleep(1)
-    slack_data = {'text': message_two + website}
+    slack_data = {'text': message_two}
     response = requests.post(
         webhook_url, data=json.dumps(slack_data),
         headers={'Content-Type': 'application/json'}
@@ -225,7 +259,17 @@ def run(hours):
             'Request to slack returned an error %s, the response is:\n%s'
             % (response.status_code, response.text)
     )
-
+    time.sleep(1)
+    slack_data = {'text': message_three + website}
+    response = requests.post(
+        webhook_url, data=json.dumps(slack_data),
+        headers={'Content-Type': 'application/json'}
+    )
+    if response.status_code != 200:
+        raise ValueError(
+            'Request to slack returned an error %s, the response is:\n%s'
+            % (response.status_code, response.text)
+    )
     if alert:
         time.sleep(1)
         slack_data = {'text': alert_message}
