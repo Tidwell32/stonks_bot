@@ -131,7 +131,7 @@ def run(hours):
                 yesterday = "Yesterday: Open: $" + ticker["yesterday_open"] + ". High: $" + ticker["yesterday_high"] + ". Low: $" + ticker["yesterday_low"] + ". Close: $" + ticker["yesterday_close"] + ". ``` \n"
                 alert_message += link + mentions + price + opened + open_change + price_thirty + price_sixty + volume + volume_change + yesterday
             except:
-                message_two += "Error fetching data for " + link
+                alert_message += "Error fetching data for high acceleration ticker: " + link
         else:
             try:
                 mentions = "```On pace for " + str(int(ticker["difference"])) + " (" + str(ticker["difference_percentage"]) + "%) more mentions than yesterday. \n"
@@ -164,7 +164,7 @@ def run(hours):
                 yesterday = "Yesterday: Open: $" + ticker["yesterday_open"] + ". High: $" + ticker["yesterday_high"] + ". Low: $" + ticker["yesterday_low"] + ". Close: $" + ticker["yesterday_close"] + ". ``` \n"
                 alert_message += link + mentions + price + opened + open_change + price_thirty + price_sixty + volume + volume_change + yesterday
             except:
-                message_two += "Error fetching data for " + link
+                alert_message += "Error fetching data for high acceleration ticker: " + link
         else:
             try:
                 mentions = "```On pace for " + str(int(ticker["difference"])) + " (" + str(ticker["difference_percentage"]) + "%) more mentions than yesterday. \n"
