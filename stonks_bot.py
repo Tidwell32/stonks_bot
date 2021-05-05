@@ -68,7 +68,7 @@ def run(hours):
         try:
             difference.append({"ticker": ticker, "difference": round(item['mentions'] * coef_list[hours], 0) - yesterdays_formatted_data[ticker], "difference_percentage": round((((item['mentions'] * coef_list[hours]) - yesterdays_formatted_data[ticker]) / yesterdays_formatted_data[ticker]) * 100, 2)})
         except:
-            continue
+            pass
 
     difference.sort(key=lambda x: x.get('difference'), reverse=True)
     todays_formatted_data.sort(key=lambda x: x.get('mentions'), reverse=True)
@@ -88,7 +88,7 @@ def run(hours):
             ticker["yesterday_low"] = str(round(list_yahoo_data[3][2], 2))
             ticker["yesterday_close"] = str(round(list_yahoo_data[3][3], 2))
         except:
-            print('excepted?')
+            print('excepted 2', ticker)
             try:
                 twelve_data = td.time_series(
                     symbol=ticker["ticker"],
@@ -106,21 +106,20 @@ def run(hours):
             except:
                 ticker["thirty_min_change_percentage"] = 0.00
                 ticker["one_hour_change_percentage"] = 0.00
+                print('excepted 3', ticker)
                 time.sleep(8)
-                continue
-
-        data = td.time_series(
-            symbol=ticker["ticker"],
-            interval="1min",
-            outputsize=60,
-            timezone="America/New_York",
-        )
-        list_data = data.as_pandas().values.tolist()
-        for interval in list_data[0:29]:
-            volume_last_thirty += interval[4]
-        for interval in list_data[30:59]:
-            volume_previous_thirty += interval[4]
-        try:
+        try:          
+            data = td.time_series(
+                symbol=ticker["ticker"],
+                interval="1min",
+                outputsize=60,
+                timezone="America/New_York",
+            )
+            list_data = data.as_pandas().values.tolist()
+            for interval in list_data[0:29]:
+                volume_last_thirty += interval[4]
+            for interval in list_data[30:59]:
+                volume_previous_thirty += interval[4]
             ticker["change_since_open"] = str(round(list_data[0][3] - float(ticker["open"]), 2))
             ticker["change_since_open_percentage"] = str(round((list_data[0][3] - float(ticker["open"])) / float(ticker["open"]) , 2))
             ticker["volume"] = str(int(volume_last_thirty))
@@ -294,6 +293,8 @@ while(hours < 15 and weekday):
     run(hours)
     duration = round(time.time(), 0) - start
     start = round(time.time(), 0)
+    print('sleeping')
     time.sleep(1785 - duration)
 
+print('quitting')
 quit()
