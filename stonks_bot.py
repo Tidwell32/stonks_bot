@@ -68,7 +68,7 @@ def run(hours):
         try:
             difference.append({"ticker": ticker, "difference": round(item['mentions'] * coef_list[hours], 0) - yesterdays_formatted_data[ticker], "difference_percentage": round((((item['mentions'] * coef_list[hours]) - yesterdays_formatted_data[ticker]) / yesterdays_formatted_data[ticker]) * 100, 2)})
         except:
-            print('skipping ' + ticker)
+            continue
 
     difference.sort(key=lambda x: x.get('difference'), reverse=True)
     todays_formatted_data.sort(key=lambda x: x.get('mentions'), reverse=True)
@@ -81,6 +81,33 @@ def run(hours):
         volume_previous_thirty = 0
         yahoo_data = yf.Ticker(ticker["ticker"])
         list_yahoo_data = yahoo_data.history(period="5d").values.tolist()
+        try:
+            ticker["open"] = str(round(list_yahoo_data[4][0], 2))
+            ticker["yesterday_open"] = str(round(list_yahoo_data[3][0], 2))
+            ticker["yesterday_high"] =str(round(list_yahoo_data[3][1], 2))
+            ticker["yesterday_low"] = str(round(list_yahoo_data[3][2], 2))
+            ticker["yesterday_close"] = str(round(list_yahoo_data[3][3], 2))
+        except:
+            try:
+                twelve_data = td.time_series(
+                    symbol=ticker["ticker"],
+                    interval="1day",
+                    outputsize=2,
+                    timezone="America/New_York",
+                )
+                list_twelve_data = twelve_data.as_pandas().values.tolist()
+                ticker["open"] = str(round(list_twelve_data[0][0], 2))
+                ticker["yesterday_open"] = str(round(list_twelve_data[1][0], 2))
+                ticker["yesterday_high"] = str(round(list_twelve_data[1][1], 2))
+                ticker["yesterday_low"] = str(round(list_twelve_data[1][2], 2))
+                ticker["yesterday_close"] = str(round(list_twelve_data[1][3], 2))
+                time.sleep(8)
+            except:
+                ticker["thirty_min_change_percentage"] = 0.00
+                ticker["one_hour_change_percentage"] = 0.00
+                time.sleep(8)
+                continue
+
         data = td.time_series(
             symbol=ticker["ticker"],
             interval="1min",
@@ -92,24 +119,21 @@ def run(hours):
             volume_last_thirty += interval[4]
         for interval in list_data[30:59]:
             volume_previous_thirty += interval[4]
-
-        ticker["open"] = str(round(list_yahoo_data[4][0], 2))
-        ticker["change_since_open"] = str(round(list_data[0][3] - list_yahoo_data[4][0], 2))
-        ticker["change_since_open_percentage"] = str(round((list_data[0][3] - list_yahoo_data[4][0]) / list_yahoo_data[4][0] * 100, 2))
-        ticker["yesterday_open"] = str(round(list_yahoo_data[3][0], 2))
-        ticker["yesterday_high"] =str(round(list_yahoo_data[3][1], 2))
-        ticker["yesterday_low"] = str(round(list_yahoo_data[3][2], 2))
-        ticker["yesterday_close"] = str(round(list_yahoo_data[3][3], 2))
-        ticker["volume"] = str(int(volume_last_thirty))
-        ticker["volume_change"] = str(int(volume_last_thirty - volume_previous_thirty))
-        ticker["volume_change_percentage"] = str(round(((volume_last_thirty - volume_previous_thirty) / volume_previous_thirty) * 100, 2))
-        ticker["thirty_min_change"] = str(round(list_data[0][3] - list_data[29][0], 2))
-        ticker["one_hour_change"] = str(round(list_data[0][3] - list_data[59][0], 2))
-        ticker["thirty_min_change_percentage"] = str(round(((list_data[0][3] - list_data[29][0]) / list_data[29][0]) * 100, 2))
-        ticker["one_hour_change_percentage"] = str(round(((list_data[0][3] - list_data[59][0]) / list_data[59][0]) * 100, 2))
-        ticker["price"] = str(round(list_data[0][3], 2))
+        try:
+            ticker["change_since_open"] = str(round(list_data[0][3] - float(ticker["open"]), 2))
+            ticker["change_since_open_percentage"] = str(round((list_data[0][3] - float(ticker["open"])) / float(ticker["open"]) , 2))
+            ticker["volume"] = str(int(volume_last_thirty))
+            ticker["volume_change"] = str(int(volume_last_thirty - volume_previous_thirty))
+            ticker["volume_change_percentage"] = str(round(((volume_last_thirty - volume_previous_thirty) / volume_previous_thirty) * 100, 2))
+            ticker["thirty_min_change"] = str(round(list_data[0][3] - list_data[29][0], 2))
+            ticker["one_hour_change"] = str(round(list_data[0][3] - list_data[59][0], 2))
+            ticker["thirty_min_change_percentage"] = str(round(((list_data[0][3] - list_data[29][0]) / list_data[29][0]) * 100, 2))
+            ticker["one_hour_change_percentage"] = str(round(((list_data[0][3] - list_data[59][0]) / list_data[59][0]) * 100, 2))
+            ticker["price"] = str(round(list_data[0][3], 2))
+        except: 
+            pass
         time.sleep(8)
-        
+
     message = 'Top Twenty Tickers By Increase In Mentions Since Yesterday: \n'
     message_two = ''
     website = "\n <https://wsb-data.vercel.app/|Investigate these tickers further> \n"
