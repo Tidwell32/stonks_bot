@@ -131,6 +131,8 @@ def run(hours):
             ticker["one_hour_change_percentage"] = str(round(((list_data[0][3] - list_data[59][0]) / list_data[59][0]) * 100, 2))
             ticker["price"] = str(round(list_data[0][3], 2))
         except: 
+            ticker["thirty_min_change_percentage"] = 0.00
+            ticker["one_hour_change_percentage"] = 0.00
             pass
         time.sleep(8)
 
@@ -175,7 +177,7 @@ def run(hours):
                 yesterday = "Yesterday: Open: $" + ticker["yesterday_open"] + ". High: $" + ticker["yesterday_high"] + ". Low: $" + ticker["yesterday_low"] + ". Close: $" + ticker["yesterday_close"] + ". ``` \n"
                 message += link + mentions + price + opened + open_change + price_thirty + price_sixty + volume + volume_change + yesterday
             except:
-                message += "Error fetching for " + '<https://finance.yahoo.com/quote/' + ticker["ticker"] + '|' + ticker["ticker"] + ":> \n"
+                message += "Error fetching data for " + link
 
 
     for ticker in top_by_increase[6:14]:
@@ -213,7 +215,7 @@ def run(hours):
                 yesterday = "Yesterday: Open: $" + ticker["yesterday_open"] + ". High: $" + ticker["yesterday_high"] + ". Low: $" + ticker["yesterday_low"] + ". Close: $" + ticker["yesterday_close"] + ". ``` \n"
                 message_two += link + mentions + price + opened + open_change + price_thirty + price_sixty + volume + volume_change + yesterday
             except:
-                message_two += "Error fetching for " + link
+                message_two += "Error fetching data for " + link
 
     for ticker in top_by_increase[14:]:
         small_increase_high_mentions = float(ticker["difference_percentage"]) > 100 and int(ticker["mentions"]) > 100
