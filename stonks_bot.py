@@ -66,7 +66,7 @@ def run(hours):
     for item in todays_formatted_data:
         ticker = item['ticker']
         try:
-            difference.append({"ticker": ticker, "difference": round(item['mentions'] * coef_list[hours], 0) - yesterdays_formatted_data[ticker], "difference_percentage": round((((item['mentions'] * coef_list[hours]) - yesterdays_formatted_data[ticker]) / yesterdays_formatted_data[ticker]) * 100, 2)})
+            difference.append({"ticker": ticker, "mentions": item['mentions'], "difference": round(item['mentions'] * coef_list[hours], 0) - yesterdays_formatted_data[ticker], "difference_percentage": round((((item['mentions'] * coef_list[hours]) - yesterdays_formatted_data[ticker]) / yesterdays_formatted_data[ticker]) * 100, 2)})
         except:
             pass
 
