@@ -14,6 +14,7 @@ webhook_url = environ['WEBHOOK_URL']
 MONGO_DB = environ["MONGO_DB"]
 TWELVE_DATA_API_KEY = environ["TWELVE_DATA_API_KEY"]
 
+
 def run(hours):
     start = time.process_time()
     td = TDClient(apikey=TWELVE_DATA_API_KEY)
@@ -252,7 +253,7 @@ def run(hours):
                 yesterday = "Yesterday: Open: $" + ticker["yesterday_open"] + ". High: $" + ticker["yesterday_high"] + ". Low: $" + ticker["yesterday_low"] + ". Close: $" + ticker["yesterday_close"] + ". ``` \n"
                 message_three += link + mentions + price + opened + open_change + price_thirty + price_sixty + volume + volume_change + yesterday
             except:
-                message_three += "Error fetching for " + link
+                message_three += "Error fetching data for " + link
 
     slack_data = {'text': message}
     response = requests.post(
@@ -302,8 +303,7 @@ def run(hours):
 a = arrow.now('US/Central')
 hours = int(a.format('HH'))
 day = int(a.format('d'))
-weekday = day > 1 and day < 7
-while(hours < 15 and weekday):
+while(hours < 15 and day < 6):
     a = arrow.now('US/Central')
     hours = int(a.format('HH'))
     start = round(time.time(), 0)
