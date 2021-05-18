@@ -122,7 +122,7 @@ def run(hours):
             for interval in list_data[30:59]:
                 volume_previous_thirty += interval[4]
             ticker["change_since_open"] = str(round(list_data[0][3] - float(ticker["open"]), 2))
-            ticker["change_since_open_percentage"] = str(round((list_data[0][3] - float(ticker["open"])) / float(ticker["open"]) , 2))
+            ticker["change_since_open_percentage"] = str(round((list_data[0][3] - float(ticker["open"])) / float(ticker["open"]) * 100 , 2))
             ticker["volume"] = str(int(volume_last_thirty))
             ticker["volume_change"] = str(int(volume_last_thirty - volume_previous_thirty))
             ticker["volume_change_percentage"] = str(round(((volume_last_thirty - volume_previous_thirty) / volume_previous_thirty) * 100, 2))
