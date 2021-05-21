@@ -13,16 +13,6 @@ from twelvedata import TDClient
 webhook_url = environ['WEBHOOK_URL']
 MONGO_DB = environ["MONGO_DB"]
 TWELVE_DATA_API_KEY = environ["TWELVE_DATA_API_KEY"]
-a = arrow.now('US/Central')
-hours = int(a.format('HH'))
-day = int(a.format('d'))
-
-while hours > 15 or hours < 9:
-    print('after hours, sleeping for ten minutes')
-    time.sleep(600)
-    a = arrow.now('US/Central')
-    hours = int(a.format('HH'))
-    day = int(a.format('d'))
 
 def run(hours):
     start = time.process_time()
@@ -309,9 +299,10 @@ def run(hours):
                 % (response.status_code, response.text)
         )
 
-
+a = arrow.now('US/Central')
+hours = int(a.format('HH'))
+day = int(a.format('d'))
 while(hours < 15 and day < 6):
-    print('doing the thing')
     a = arrow.now('US/Central')
     hours = int(a.format('HH'))
     start = round(time.time(), 0)
@@ -320,3 +311,6 @@ while(hours < 15 and day < 6):
     start = round(time.time(), 0)
     print('sleeping')
     time.sleep(1785 - duration)
+
+print('quitting')
+quit()
