@@ -1,0 +1,1 @@
+worker: python stonks_bot.py
